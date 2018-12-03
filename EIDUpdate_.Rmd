@@ -3,15 +3,28 @@ title: "EID Updates"
 author: "Daniel Fedha"
 date: "`r format(Sys.time(), '%d/%m/%Y')`"
 output:
-  word_document: 
+  word_document:
     highlight: tango
     toc: yes
+
 ---
 
 ```{r setup, include=F}
 knitr::opts_chunk$set(echo = F, include = T, warning = F, message = F, comment = NA, collapse = T)
-Sys.setenv(PATH = paste(Sys.getenv("PATH"), "C:\\Program Files\\MiKTeX 2.9\\miktex\\bin\\x64", sep=.Platform$path.sep))
+Sys.setenv(PATH = paste(Sys.getenv("PATH"), "C:/Program Files/MiKTeX 2.9/miktex/bin/x64", sep=.Platform$path.sep))
 ```
+
+```{r loadpackages}
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(writexl)
+library(knitr)
+library(flextable)
+library(tidyr)
+library(lubridate)
+```
+
 ######
 ######
 ######
@@ -21,98 +34,95 @@ Sys.setenv(PATH = paste(Sys.getenv("PATH"), "C:\\Program Files\\MiKTeX 2.9\\mikt
 
 
 
-```{r dbCon, echo=FALSE, include=FALSE}
-#install.packages("RPostgreSQL", dependencies = T)
-# # require("RPostgreSQL")
+```{r sqlstatements, echo=FALSE, include=FALSE}
+#todate <- Sys.time()
 # 
-# # 
-# # # create a connection
-# # pw <- {
-# #   "0k0@us3r"
-# # }
-# 
-# # 
-# # # load Postgres driver
-# # drv <- dbDriver("PostgreSQL")
-# # 
-# # # create a connection to okoa db
-# # con <- dbConnect(drv, dbname = "okoa",
-# #                  host = "localhost", port = 5432,
-# #                  user = "okoauser", password = pw)
-# # rm(pw)
-# # # check for a table
-# # # dbExistsTable(con, "okoa_laboratorysample")
-# # 
-# 
-# # data <- dbGetQuery(con,
-# # "SELECT	a.study_identification_number as sid,
-#     #  		a.user_entering_sample_details_id as staff_id,
-#     # 		g.name as lab_name,
-#     #  		a.dbs_collection_date as date_dbscollected,
-#     # 		a.viable_blood_spots_count as viable_bloodspots,
-#     # 		a.date_of_birth as infant_dob,
-#     # 		a.date_sample_details_added as date_sampleadded,
-#     # 		a.infant_gender,
-#     # 		c.name as sample_entrypoint,
-#     # 		a.sample_entry_point_other as sample_entrypoint_other,
-#     # 		e.name as infantprophylaxis,
-#     #     d.name as infant_feedinginfo,
-#     # 		a.infant_prophylaxis_regimen_other as infantprophylaxis_other,
-#     # 		DATE_PART('day',dbs_collection_date::timestamp - date_of_birth::timestamp) as infantage_days,
-#     # 		a.mother_age,
-#     # 		a.mother_alive_status as mother_status,
-#     # 		a.maternal_haart_initiation_date as motherhaartinitiation_date,
-#     # 		b.name as  mother_pmtctregimen,
-#     # 		a.maternal_pmtct_regimen_other as mother_pmtctregimen_other,
-#     # 		f.name as pcrtest_requested,
-#     # 		a.sample_redraw_pcr_code_id as sampleredraw_pcr,
-#     # 		a.user_receiving_sample_dr_lab_id as staff_receivingsample,
-#     # 		a.dr_lab_no_viable_blood_spots  as viablebloodspots_dr,
-#     # 		a.date_genotyping_dbs_spots as dbsgenotyping_date,
-#     # 		a.pcr_test_positive_result_date as pcrtestpositiveresult_date,
-#     # 		a.dbs_placed_in_freezer_date as dbsplacedinfreezer_date,
-#     # 		a.success_sequencing_rt_pol1_region,
-#     # 		a.success_sequencing_pr_pol1_region
-# # FROM
-# # 		    public.okoa_laboratorysample as a
-# # 
-#         # left join okoa_motherpmtctregimen as b
-#         # 	on a.maternal_pmtct_regimen_id = b.id
-#         # 
-#         # left join okoa_sampleentrypoint as c
-#         # 	on a.sample_entry_point_id = c.id
-#         # 
-#         # left join okoa_infantfeedinginformation as d
-#         # 	on a.infant_feeding_information_id = d.id
-#         # 
-#         # left join okoa_infantprophylaxisregimen as e
-#         # 	on a.infant_prophylaxis_regimen_id = e.id
-#         # 
-#         # left join okoa_pcrtest as f
-#         # 	on a.requested_pcr_test_id = f.id
-#         # 
-#         # left join okoa_laboratory as g
-#         # 	on a.laboratory_id = g.id;")
-#        
-# 
-# # #close db connection
-# # lapply(dbListConnections(drv = dbDriver("PostgreSQL")), function(x) {dbDisconnect(conn = x)})
-# 
-# # data$enrolled = 1# 
-# # saveRDS(data, file='C:\\Users\\Daniel Fedha\\Box Sync\\data\\EID\\data.rds')
+#  if(!require('RPostgreSQL')) install.packages("RPostgreSQL", dependencies = T)
+#    require("RPostgreSQL")
+#
+#    drv <- dbDriver("PostgreSQL")
+#
+#    con <- dbConnect(drv, dbname = "okoa",
+#                    host = "localhost", port = 5432,
+#                     user = "okoauser", password ='0k0@us3r') #rstudioapi::askForPassword("Database password"))
+#    on.exit(dbDisconnect(con), add = TRUE)
+#
+#    #check for a table dbExistsTable(con, "okoa_laboratorysample")
+#
+#    sqlQuery = "SELECT	ls.study_identification_number as sid,
+#  CONCAT(a_user.first_name, ' ', a_user.last_name) as staff_name,
+#  lab.name as lab_name,   ls.dbs_collection_date as date_dbscollected,   ls.viable_blood_spots_count as viable_bloodspots,
+#  ls.date_of_birth as infant_dob,   ls.date_sample_details_added as date_sampleadded,   ls.infant_gender,
+#  sep.name as sample_entrypoint,   ls.sample_entry_point_other as sample_entrypoint_other,
+#  ipr.name as infantprophylaxis,   ifi.name as infant_feedinginfo,
+#  ls.infant_prophylaxis_regimen_other as infantprophylaxis_other,
+#  DATE_PART('day',dbs_collection_date::timestamp - date_of_birth::timestamp) as infantage_days,
+#  ls.mother_age,   ls.mother_alive_status as mother_status,   ls.maternal_haart_initiation_date as motherhaartinitiation_date,
+#  pmtct.name as  mother_pmtctregimen,   ls.maternal_pmtct_regimen_other as mother_pmtctregimen_other,
+#  pcr.name as pcrtest_requested,   ls.sample_redraw_pcr_code_id as sampleredraw_pcr,
+#  ls.user_receiving_sample_dr_lab_id as staff_receivingsample,   ls.dr_lab_no_viable_blood_spots  as viablebloodspots_dr,
+#  ls.date_genotyping_dbs_spots as dbsgenotyping_date,   ls.pcr_test_positive_result_date as pcrtestpositiveresult_date,
+#  ls.dbs_placed_in_freezer_date as dbsplacedinfreezer_date,   ls.success_sequencing_rt_pol1_region,
+#  ls.success_sequencing_pr_pol1_region,   rsu.name as reasonsample_unacceptable,   rpc.name as receiptpackaging_condition,
+#  sm.shipping_date,   sm.receiving_date,   sm.receiving_time,   sm.date_placed_in_freezer as dateplaced_freezer,
+#  sm.time_placed_in_freezer as timeplaced_freezer,   sm.shipping_temp,   sm.receiving_temp,   sms.name as manifest_status
+#
+#    FROM
+#    public.okoa_laboratorysample as ls
+#
+#    left join okoa_motherpmtctregimen as pmtct
+#    on ls.maternal_pmtct_regimen_id = pmtct.id
+#
+#    left join okoa_sampleentrypoint as sep
+#    on ls.sample_entry_point_id = sep.id
+#
+#    left join okoa_infantfeedinginformation as ifi
+#    on ls.infant_feeding_information_id = ifi.id
+#
+#    left join okoa_infantprophylaxisregimen as ipr
+#    on ls.infant_prophylaxis_regimen_id = ipr.id
+#
+#    left join okoa_pcrtest as pcr
+#    on ls.requested_pcr_test_id = pcr.id
+#
+#    left join okoa_laboratory as lab
+#    on ls.laboratory_id = lab.id
+#
+#    left join okoa_samplemanifestline as sml
+#    on ls.id = sml.laboratory_sample_id
+#
+#    left join okoa_samplemanifest as sm
+#    on sm.id = sml.sample_manifest_id
+#
+#    left join okoa_samplemanifeststatus as sms
+#    on sms.id = sm.manifest_status_id
+#
+#    left join okoa_reasonsampleunacceptable as rsu
+#    on rsu.id = sml.reason_sample_unacceptable_id
+#
+#    left join okoa_receiptpackagingconditioncode as rpc
+#    on rpc.id = sml.receipt_packaging_condition_id
+#
+#    left join auth_user as a_user
+#   on a_user.id = ls.user_entering_sample_details_id;"
+#
+#
+#     data <- dbGetQuery(con, sqlQuery)
+#
+#
+#      #close db connection
+#      #lapply(dbListConnections(drv = dbDriver("PostgreSQL")), function(x) {dbDisconnect(conn = x)})
+#
+#     data$enrolled = 1
+#     saveRDS(data, file='C:/Users/Daniel Fedha/Box Sync/data/EID/data.rds')
+
 
 ```
 
 
-```{r echo=FALSE}
-library(ggplot2)
-library(readr)
-library(dplyr)
-library(knitr)
-library(flextable)
-library(tidyr)
+```{r data-processing, echo=FALSE}
 
-data <- readRDS('C:\\Users\\Daniel Fedha\\Box Sync\\data\\EID\\data.rds')
+data <- readRDS('C:/Users/Daniel Fedha/Box Sync/data/EID/data.rds')
 data$date_dbscollected <- as.Date(data$date_dbscollected, format = '%d/%m/%Y')
 data$date_sampleadded <- as.Date(data$date_sampleadded, format = '%d/%m/%Y')
 data$dbsplacedinfreezer_date<- as.Date(data$dbsplacedinfreezer_date, format = '%d/%m/%Y')
@@ -127,7 +137,37 @@ data$infant_feedinginfo <- as.factor(data$infant_feedinginfo)
 data$mother_status <- as.factor(data$mother_status)
 data$mother_pmtctregimen <- as.factor(data$mother_pmtctregimen)
 data$pcrtest_requested <- as.factor(data$pcrtest_requested)
-data$week_enrol <- as.integer(strftime(data$date_sampleadded, format = '%V'))-22
+data$week_enrol <- 0
+data$week_enrol[data$date_sampleadded >= '2018/06/01' & data$date_sampleadded <= '2018/06/09'] <- 1
+data$week_enrol[data$date_sampleadded >= '2018/06/10' & data$date_sampleadded <= '2018/06/16'] <- 2
+data$week_enrol[data$date_sampleadded >= '2018/06/17' & data$date_sampleadded <= '2018/06/23'] <- 3
+data$week_enrol[data$date_sampleadded >= '2018/06/24' & data$date_sampleadded <= '2018/06/30'] <- 4
+data$week_enrol[data$date_sampleadded >= '2018/07/01' & data$date_sampleadded <= '2018/07/07'] <- 5
+data$week_enrol[data$date_sampleadded >= '2018/07/08' & data$date_sampleadded <= '2018/07/14'] <- 6
+data$week_enrol[data$date_sampleadded >= '2018/07/15' & data$date_sampleadded <= '2018/07/21'] <- 7
+data$week_enrol[data$date_sampleadded >= '2018/07/22' & data$date_sampleadded <= '2018/07/28'] <- 8
+data$week_enrol[data$date_sampleadded >= '2018/07/29' & data$date_sampleadded <= '2018/08/04'] <- 9
+data$week_enrol[data$date_sampleadded >= '2018/08/05' & data$date_sampleadded <= '2018/08/11'] <- 10
+data$week_enrol[data$date_sampleadded >= '2018/08/12' & data$date_sampleadded <= '2018/08/18'] <- 11
+data$week_enrol[data$date_sampleadded >= '2018/08/19' & data$date_sampleadded <= '2018/08/25'] <- 12
+data$week_enrol[data$date_sampleadded >= '2018/08/26' & data$date_sampleadded <= '2018/09/01'] <- 13
+data$week_enrol[data$date_sampleadded >= '2018/09/02' & data$date_sampleadded <= '2018/08/08'] <- 14
+data$week_enrol[data$date_sampleadded >= '2018/09/09' & data$date_sampleadded <= '2018/09/15'] <- 15
+data$week_enrol[data$date_sampleadded >= '2018/09/16' & data$date_sampleadded <= '2018/09/22'] <- 16
+data$week_enrol[data$date_sampleadded >= '2018/09/23' & data$date_sampleadded <= '2018/09/30'] <- 17
+data$week_enrol[data$date_sampleadded >= '2018/10/01' & data$date_sampleadded <= '2018/10/06'] <- 18
+data$week_enrol[data$date_sampleadded >= '2018/10/07' & data$date_sampleadded <= '2018/10/13'] <- 19
+data$week_enrol[data$date_sampleadded >= '2018/10/14' & data$date_sampleadded <= '2018/10/20'] <- 20
+data$week_enrol[data$date_sampleadded >= '2018/10/21' & data$date_sampleadded <= '2018/10/27'] <- 21
+data$week_enrol[data$date_sampleadded >= '2018/10/28' & data$date_sampleadded <= '2018/10/31'] <- 22
+data$week_enrol[data$date_sampleadded >= '2018/11/01' & data$date_sampleadded <= '2018/11/10'] <- 23
+data$week_enrol[data$date_sampleadded >= '2018/11/11' & data$date_sampleadded <= '2018/11/17'] <- 24
+data$week_enrol[data$date_sampleadded >= '2018/11/18' & data$date_sampleadded <= '2018/11/24'] <- 25
+data$week_enrol[data$date_sampleadded >= '2018/11/25' & data$date_sampleadded <= '2018/11/30'] <- 26
+data$week_enrol[data$date_sampleadded >= '2018/12/01' & data$date_sampleadded <= '2018/12/08'] <- 27
+data$week_enrol[data$date_sampleadded >= '2018/12/09' & data$date_sampleadded <= '2018/12/15'] <- 28
+data$week_enrol[data$date_sampleadded >= '2018/12/16' & data$date_sampleadded <= '2018/12/22'] <- 29
+data$week_enrol[data$date_sampleadded >= '2018/12/23' & data$date_sampleadded <= '2018/12/29'] <- 30
 
 my_theme <- function(){
   theme_light() +
@@ -137,75 +177,136 @@ my_theme <- function(){
           # axis.ticks = element_blank(),
           # axis.text.x = element_blank(),
           axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
           axis.text.y = element_text(size = 8, colour = 'black'))
-  }
+}
 
+sep_index <- data$sample_entrypoint == 'Other'
+pmt_index <- data$mother_pmtctregimen == 'Other'
+ipr_index <- data$infantprophylaxis == 'Other'
+
+data$infantprophylaxis <- as.character(data$infantprophylaxis)
+data$sample_entrypoint <- as.character(data$sample_entrypoint)
+data$mother_pmtctregimen <- as.character(data$mother_pmtctregimen)
+
+
+data$infantprophylaxis[ipr_index] <- paste('Other - ', data$infantprophylaxis_other[ipr_index])
+data$sample_entrypoint[sep_index] <- paste('Other - ',data$sample_entrypoint_other[sep_index])
+data$sample_entrypoint[data$sample_entrypoint_other=='IPD'] <- 'Paediatric Ward/ IPD'
+data$mother_pmtctregimen[pmt_index] <- paste('Other - ', data$mother_pmtctregimen_other[pmt_index])
+data$mother_pmtctregimen[data$mother_pmtctregimen_other=='Not provided'] <- 'Unknown'
+
+rm(sep_index, pmt_index, ipr_index)
+
+```
+
+```{r data-cleaning}
+data$sid[data$sid=='01EIDKE180018'] <- '01EIDKE18018'
+data$sid[data$sid=='02EIDKE180014'] <- '02EIDKE18014'
+
+```
+
+```{r supervision}
+
+# #  set.seed(10) #for reproducibility
+# #  df2 <- df[sample(nrow(df), 3), ] #Select 3 random rows
+# # sample_n((0.1*nrow(alupedt)))
+# 
+# supData <- data %>% 
+#   select(sid, date_sampleadded, staff_name, lab_name,
+#          date_dbscollected:sample_entrypoint, infantprophylaxis,
+#          infant_feedinginfo, 
+#          mother_age:mother_pmtctregimen, pcrtest_requested, 
+#          pcrtestpositiveresult_date, dateplaced_freezer)
+# 
+# #-------------------
+# coastdt <- supData %>% filter(lab_name=='Coast Provincial General Hospital')
+# alupedt <- supData%>% filter(lab_name=='KEMRI CIPDCR, Alupe Busia') 
+# kisiandt <- supData %>% filter(lab_name=='KEMRI CDC HIV/R, Kisumu') 
+# ampathdt <- supData %>% filter(lab_name=='AMPATH, Eldoret') 
+# nhrldt <- supData %>% filter(lab_name=='National HIV Reference Laboratory') 
+# p3dt <- supData %>% filter(lab_name=='KEMRI CVR HIV-P3, Nairobi') 
+# 
+# write_xlsx (list('CPGH'=coastdt, 'ALUPE'=alupedt, 'KISIAN'=kisiandt, 'AMPATH'=ampathdt, 'P3'=p3dt, 'NHRL'=nhrldt), 'C:/Users/Daniel Fedha/Box Sync/data/EID/supervisionwb.xlsx')
+# 
+# rm(supData, coastdt, alupedt, p3dt, nhrldt, ampathdt, kisiandt)
 ```
 
 # 1. **Enrolment Statistics**
 
-a. ## Weekly Enrolment by Lab - Table:
+a. ## Enrolment by Lab - Table:
 
 ```{r enrolLab, fig.height=2, fig.width=6}
+
 sampleSize <- read_csv(file = 'C:/Users/Daniel Fedha/Box Sync/data/EID/sample_allocation.csv')
-dtm <- merge(
-  data %>%
-    group_by(lab_name) %>%
-    select(lab_name, enrolled, week_enrol) %>% 
-    filter(week_enrol==1) %>%
-    summarise('week 1'=sum(enrolled)),
-  data %>%
-    group_by(lab_name) %>%
-    select(lab_name, enrolled, week_enrol) %>% 
-    filter(week_enrol==2) %>%
-    summarise('week 2'=sum(enrolled)),
+
+dtm <- merge(data %>%
+               group_by(lab_name) %>%
+                select(lab_name, enrolled, week_enrol) %>%
+                filter(week_enrol<=4) %>%
+                summarise('June'=sum(enrolled)),
+             data %>%
+                    group_by(lab_name) %>%
+                    select(lab_name, enrolled, week_enrol) %>% 
+                    filter(week_enrol>=5 & week_enrol <=8) %>%
+                    summarise('July'=sum(enrolled)),
         by='lab_name', all = T) %>%
+  
   merge(data %>%
-    group_by(lab_name) %>%
-    select(lab_name, enrolled, week_enrol) %>% 
-    filter(week_enrol==3) %>%
-    summarise('week 3'=sum(enrolled)), 
-  by='lab_name', all = T) %>% 
+            group_by(lab_name) %>%
+            select(lab_name, enrolled, week_enrol) %>% 
+            filter(week_enrol >=9 & week_enrol <=13) %>%
+            summarise('Aug'=sum(enrolled)),
+        by='lab_name', all = T) %>%
+  
   merge(data %>%
+            group_by(lab_name) %>%
+            select(lab_name, enrolled, week_enrol) %>%
+            filter(week_enrol>=14 & week_enrol <=17) %>%
+            summarise('Sep'=sum(enrolled)),
+        by='lab_name', all = T) %>%
+  
+  merge(data %>%
+            group_by(lab_name) %>%
+            select(lab_name, enrolled, week_enrol) %>%
+            filter(week_enrol>=18 & week_enrol<=22) %>%
+            summarise('Oct'=sum(enrolled)),
+        by='lab_name', all = T) %>%
+   
+   merge(data %>%
+            group_by(lab_name) %>%
+            select(lab_name, enrolled, week_enrol) %>%
+            filter(week_enrol>=23 & week_enrol<=26) %>%
+            summarise('Nov'=sum(enrolled)),
+        by='lab_name', all = T) %>%
+  
+   merge(data %>%
           group_by(lab_name) %>%
-          select(lab_name, enrolled, week_enrol) %>% 
-          filter(week_enrol==4) %>%
-          summarise('week 4'=sum(enrolled)),
-        by='lab_name', all = T) %>%
-  replace_na(list('week 1'=0, 
-                  'week 2'=0,
-                  'week 3'=0,
-                  'week 4'=0))
+          select(lab_name, enrolled, week_enrol) %>%
+          filter(week_enrol>26) %>%
+          summarise('Dec'=sum(enrolled)),
+      by='lab_name', all = T) %>%
+  
+  
+  replace_na(list('June'=0, 'July'=0, 'Aug'=0, 'Sep'=0, 'Oct'=0, 'Nov'=0, 'Dec'=0))
 
-dtm <- merge(dtm, sampleSize, by='lab_name') %>%
-  rename('Lab Name'=lab_name)
+dtm <- merge(dtm, sampleSize, by='lab_name') %>%  rename('Lab Name'=lab_name)
 
-dtm$`Lab Name` <- as.character(dtm$`Lab Name`)
-dtm <- rbind(dtm, c("KEMRI CVR HIV-P3, Nairobi",0,0,0,0,125,0,0))
-dtm <- rbind(dtm, c("Kenyatta National Hospital",0,0,0,0,23,0,0))
-dtm <- rbind(dtm, c("KEMRI/WRP CRC, Kericho",0,0,0,0,65,0,0))
-
-dtm$`week 1`<- as.integer(dtm$`week 1`)
-dtm$`week 2`<- as.integer(dtm$`week 2`)
-dtm$`week 3`<- as.integer(dtm$`week 3`)
-dtm$`week 4`<- as.integer(dtm$`week 4`)
-
-dtm$allocated_sampleSize <- as.integer(dtm$allocated_sampleSize)
-dtm$Total <- dtm$`week 1`+ dtm$`week 2`+ dtm$`week 3`+ dtm$`week 4`
+dtm$allocated_sampleSize <- dtm$allocated_sampleSize
+dtm$Total <- dtm$`June`+ dtm$`July`+ dtm$`Aug`+ dtm$`Sep`+dtm$`Oct`+dtm$`Nov`+dtm$`Dec`
 dtm$difference <- dtm$Total - dtm$allocated_sampleSize
 dtm$percentage_achieved <- (dtm$Total/dtm$allocated_sampleSize)*100
-dtm$percentage_achieved <- as.integer(format(dtm$percentage_achieved, digits = 2)) 
+dtm$percentage_achieved <- round(dtm$percentage_achieved) 
 dtm <- dtm %>% arrange(desc(percentage_achieved))
-dtm <- rbind(dtm, c("Total", colSums(dtm[,2:9])))
+dtm$`Lab Name` <- as.character(dtm$`Lab Name`)
+dtm <- rbind(dtm, c("Total", colSums(dtm[,-c(1,12)]), 0))
+dtm$Total <- as.integer(dtm$Total)
+dtm$percentage_achieved[dtm$allocated_sampleSize==560] <-round((sum(dtm$Total[1:8])/560)*100)
 
-dtm$percentage_achieved[dtm$allocated_sampleSize==560] <-format((sum(as.integer(dtm$Total[1:8]))/560)*100, digits = 2)
-
-dtm %>% select('Lab Name', `week 1`, `week 2`, `week 3`, `week 4`, Total, allocated_sampleSize, difference, percentage_achieved) %>%
-  rename('% Achieved'= percentage_achieved, 'Sample Size'=allocated_sampleSize,
-         'wk1'=`week 1`,'wk2'=`week 2`,'wk3'=`week 3`,'wk4'=`week 4`) %>%
-  regulartable() %>%
-  theme_zebra() %>%
-  autofit()
+dtm %>% select('Lab Name', `June`, `July`, `Aug`, `Sep`, `Oct`, `Nov`, `Dec`, Total, 
+               allocated_sampleSize, difference, percentage_achieved) %>%
+  rename('% Achieved'= percentage_achieved, 'Sample Size'=allocated_sampleSize) %>%
+  regulartable() %>%  theme_zebra() %>%  autofit()
 
 ```
 Summary:&nbsp;
@@ -217,58 +318,51 @@ pmtct <- aggregate(data$enrolled, by=list(infaF=data$mother_pmtctregimen), FUN=s
 
 ```
 
-* `r sum(as.integer(dtm$Total[1:8]))` samples have been enrolled over a period of 4 weeks &nbsp;
 
+* `r sum(as.integer(dtm$Total[1:8]))` samples have been enrolled over a period of 6 months &nbsp;
   * `r subset(dtm, dtm$Total==max(as.integer(dtm[,'Total'][1:8])), select='Lab Name')` has enrolled the highest no. of samples: `r max(as.integer(dtm[,'Total'][1:8]))`, &nbsp;
-  
-  * 3 labs have not enrolled any sample:&nbsp;
-  
-    * KNH, P3, and NHRL. WRP is inactive &nbsp;
-    
+
   * most samples [N=`r max(sampEP[,'x']) `, 
   (`r format(((max(sampEP[,'x']))/sum(as.integer(dtm$Total[1:8])))*100,digits=2)`%)] are through MCH/PMTCT sample entry point &nbsp;
   
   * most samples [N= `r max(infaF[,'x']) `,
-  (`r format(((max(infaF[,'x']))/sum(as.integer(dtm$Total[1:8])))*100,digits=2)`%] are on BF &nbsp;
+  (`r format(((max(infaF[,'x']))/sum(as.integer(dtm$Total[1:8])))*100,digits=2)`%] are on EBF &nbsp;
   
   * Initial PCR at 6 weeks or first contact is the most requested [N= `r max(pcrT[,'x']) `, 
   (`r format(((max(pcrT[,'x']))/sum(as.integer(dtm$Total[1:8])))*100,digits=2)`%] &nbsp;
   
   * most mothers [N= `r max(pmtct[,'x']) `, (`r format(((max(pmtct[,'x']))/sum(as.integer(dtm$Total[1:8])))*100,digits=2)` %] are on TDF+3TC+EFV &nbsp;
+
   
-  * Missing data for all primary variables is 0% &nbsp;
-  
-  * No incosistency in SIDs nor dates.
+  * Missing data for primary variables is 0% &nbsp;
+
 &nbsp;
 
-b. ##  Lab Enrolment by Gender - Bar Graph
+b. ##  Lab Enrolment by Gender
 
-```{r enrolBar, fig.height=2, fig.width=6}
+
+
+```{r enrolBar, fig.height=3, fig.width=8}
 data %>%
     group_by(lab_name, infant_gender) %>%
     select(lab_name, enrolled, infant_gender) %>% 
     summarise('enrolled'=sum(enrolled)) %>%
   ggplot(aes(x=reorder(lab_name, enrolled),
-             y=enrolled,
-             fill=infant_gender,
-             position='stack')) +
-  geom_bar(width=0.7, stat = 'identity') +
-  geom_text(aes(label = enrolled,
-                y=enrolled), 
-            position=position_stack(vjust = 0.5)) + 
+             y=enrolled, fill=infant_gender, position='stack')) +
+  geom_bar(width=0.8, stat = 'identity') +
+  geom_text(aes(label = enrolled, y=enrolled), position=position_stack(vjust = 0.5)) + 
   coord_flip() +
   scale_y_continuous(expand = c(0, 0)) +  # Set the axes to cross at 0
-  labs(x='Laboratory',
-       y='No. Enrolled') +
+  labs(x='Laboratory', y='No. Enrolled') +
   my_theme() 
 
 ```
 
  &nbsp;
  
- c. ## Sample Entry Point by Lab - Bar Graph:
+ c. ## Sample Entry Point by Lab:
 
-```{r enrolBSampEntryP, fig.height=3, fig.width=7}
+```{r enrolBSampEntryP, fig.height=4, fig.width=12}
 data %>%
     group_by(sample_entrypoint, lab_name) %>%
     select(lab_name, enrolled, sample_entrypoint) %>% 
@@ -282,7 +376,7 @@ data %>%
                 y=enrolled), 
             position=position_stack(vjust = 0.5)) + 
   coord_flip() +
-  scale_y_continuous(expand = c(0, 0), breaks = seq(0, 50, 5)) +  # Set the axes to cross at 0
+  scale_y_continuous(expand = c(0, 0), breaks = seq(0, 300, 20)) +  # Set the axes to cross at 0
   
   labs(x='Laboratory',
        y=' ') +
@@ -291,9 +385,9 @@ data %>%
 ```
 &nbsp;
 
-d. ## Infant Feeding by Lab - Bar Graph:
+d. ## Infant Feeding by Lab:
 
-```{r fig.height=3, fig.width=7}
+```{r fig.height=3, fig.width=8}
 data %>%
     group_by(infant_feedinginfo, lab_name) %>%
     select(lab_name, enrolled, infant_feedinginfo) %>% 
@@ -307,7 +401,7 @@ data %>%
                 y=enrolled), 
             position=position_stack(vjust = 0.5)) + 
   coord_flip() +
-  scale_y_continuous(expand = c(0, 0), breaks = seq(0, 50, 5)) +  # Set the axes to cross at 0
+  scale_y_continuous(expand = c(0, 0), breaks = seq(0, 250, 20)) +  # Set the axes to cross at 0
   labs(x='Laboratory',
        y=' ') +
   my_theme() 
@@ -316,9 +410,9 @@ data %>%
 
 &nbsp;
 
-  e. ## PCR Test Requested by Lab - Bar Graph:
+  e. ## PCR Test Requested by Lab:
 
-```{r fig.height=2, fig.width=8}
+```{r fig.height=3, fig.width=12}
 data %>%
     group_by(pcrtest_requested, lab_name) %>%
     select(lab_name, enrolled, pcrtest_requested) %>% 
@@ -332,7 +426,7 @@ data %>%
                 y=enrolled), 
             position=position_stack(vjust = 0.5)) + 
   coord_flip() +
-  scale_y_continuous(expand = c(0, 0), breaks = seq(0, 50, 5)) +  # Set the axes to cross at 0
+  scale_y_continuous(expand = c(0, 0), breaks = seq(0, 400, 30)) +  # Set the axes to cross at 0
   labs(x='Laboratory',
        y=' ') +
   my_theme() 
@@ -340,8 +434,8 @@ data %>%
 ```
 &nbsp;
 
-  f. ## Mother PMTCT Regimen by Lab - Bar Graph:
-```{r fig.height=4, fig.width=7}
+  f. ## Mother PMTCT Regimen by Lab:
+```{r fig.height=6, fig.width=12}
 
 data %>%
     group_by(mother_pmtctregimen, lab_name) %>%
@@ -351,12 +445,12 @@ data %>%
              y=enrolled,
              fill=lab_name,
              position='stack')) +
-  geom_bar(width=0.7, stat = 'identity') +
+  geom_bar(width=0.9, stat = 'identity') +
   geom_text(aes(label = enrolled,
                 y=enrolled), 
             position=position_stack(vjust = 0.5)) + 
   coord_flip() +
-  scale_y_continuous(expand = c(0, 0), breaks = seq(0, 40, 5)) +  # Set the axes to cross at 0
+  scale_y_continuous(expand = c(0, 0), breaks = seq(0, 340, 20)) +  # Set the axes to cross at 0
   labs(x='Laboratory',
        y=' ') +
   my_theme() 
@@ -365,27 +459,112 @@ data %>%
 ```
 &nbsp;
 
-g. ## Age distribution - Histogram
+g. ## Age distribution - Histogram [bin-width=30 days]
 
-```{r enrolHist, fig.height=2, fig.width=6}
+```{r enrolHist, fig.height=3, fig.width=6}
 
 ggplot(data, 
-           aes(data$infantage_days)) +
-      geom_histogram(breaks=seq(1, 547, by =30),
-                     col="red", 
-                     aes(fill=..count..)) +
-      scale_fill_gradient("Count", 
-                          low = "green", 
-                          high = "red") +
-      labs(x='Age in Days',
-           y='Count')+
+       aes(data$infantage_days)) +
+  geom_histogram(breaks=seq(1, 547, by =30), col="red", aes(fill=..count..)) +
+  scale_fill_gradient("Count", low = "green", high = "red") +
+  labs(x='Age in Days', y='Count') +
   scale_y_continuous(expand = c(0, 0)) +  # Set the axes to cross at 0
-  scale_x_continuous(expand = c(0, 0)) +  # Set the axes to cross at 0
-  my_theme()
+  scale_x_continuous(expand = c(0, 0)) +
+  theme_light() +
+  theme(panel.grid = element_blank(),
+        axis.text.y = element_text(size = 8, colour = 'black'))
+```
+&nbsp;
+
+
+
+# **2. Tracking Log Data:**
+
+```{r shippingDates}
+shipDate <- data %>% filter(!is.na(receiving_date)) %>% select(lab_name, enrolled, starts_with('shipping_'), starts_with('receiving_'))
+shipDate$datediff <- difftime(shipDate$receiving_date, shipDate$shipping_date, units = 'days')
+
+shipDate <- merge(
+  shipDate %>% group_by(lab_name) %>% select(lab_name, datediff, enrolled) %>% filter(datediff ==0) %>% 
+    summarise('Dispatch to Receipt = 0 Days'=sum(enrolled)),
+  shipDate %>% group_by(lab_name) %>% select(lab_name, datediff, enrolled) %>% filter(datediff ==1) %>% 
+    summarise('Dispatch to Receipt = 1 Day'=sum(enrolled)),
+by='lab_name', all=T) %>% 
+  merge(
+    shipDate %>% group_by(lab_name) %>% select(lab_name, datediff, enrolled) %>% filter(datediff ==2) %>%
+      summarise('Dispatch to Receipt = 2 Days' = sum(enrolled)),
+    by='lab_name', all=T) %>%
+
+  rename('Lab Name'=lab_name) #%>%
+
+```
+
+```{r dispReceive_DR}
+drlab <- merge(
+    data %>%
+    group_by(lab_name) %>%
+    select('Lab Name'=lab_name, manifest_status, enrolled) %>%
+    filter(is.na(manifest_status) | manifest_status=='Draft at EID Lab') %>%
+    summarise('Not yet Dispatched'=sum(enrolled)),
+  
+  data %>%
+    group_by(lab_name) %>%
+    select('Lab Name'=lab_name, manifest_status, enrolled) %>%
+    filter(manifest_status =='Sent to DR Lab') %>%
+    summarise('Dispatched to DR Lab but not yet Recieved'=sum(enrolled)),
+  by='Lab Name', all=T) %>%
+  
+  merge(
+  data %>%
+    group_by(lab_name) %>%
+    select('Lab Name'=lab_name, manifest_status, enrolled) %>%
+    filter(manifest_status == 'Received at DR Lab') %>%
+    summarise('Dispatched and Received at DR Lab'=sum(enrolled)),
+  by='Lab Name', all=T) %>%
+  
+  merge(
+    data %>%
+      group_by(lab_name) %>%
+      select('Lab Name'=lab_name, receiptpackaging_condition, enrolled) %>%
+      filter(receiptpackaging_condition == 'Good') %>%
+      summarise("Packaging Condition is Good"=sum(enrolled)),
+  by='Lab Name', all=T) %>%
+
+  merge(
+    data %>%
+      group_by(lab_name) %>%
+      select('Lab Name'=lab_name, receiptpackaging_condition, enrolled) %>%
+      filter(receiptpackaging_condition == 'Not Good') %>%
+      summarise("Packaging Condition is Not Good"=sum(enrolled)),
+  by='Lab Name', all=T)%>%
+
+  merge(
+    data %>%
+      group_by(lab_name) %>% filter(receiptpackaging_condition == 'Not Good') %>%
+      select('Lab Name'=lab_name, 'Reason sample Unaccepted'= reasonsample_unacceptable),
+  by='Lab Name', all=T)  
+
+drlab <- merge(drlab, shipDate, by='Lab Name', all = T) %>% select(c(1:4, 8:10, 5:7)) %>%
+  replace_na(list('Not yet Dispatched'= 0,
+                  'Dispatched to DR Lab but not yet Recieved'=0,
+                  'Dispatched and Received at DR Lab'=0,
+                  'Packaging Condition is Good'=0,
+                  'Packaging Condition is Not Good'=0,
+                  'Reason sample Unaccepted'= 'N/A',
+                  'Dispatch to Receipt = 0 Days'=0, 
+                  'Dispatch to Receipt = 1 Day'=0, 
+                  'Dispatch to Receipt = 2 Days'=0))
+
+drlab$`Lab Name` <- as.character(drlab$`Lab Name`)
+drlab <- rbind(drlab,c('Total No of Samples', colSums(drlab[,c(2:9)]),'-'))
+#drlab[,c(2:5)] <- sapply(drlab[,c(2:5)],as.character)
+drlab %>% regulartable() %>% theme_zebra() 
+
 ```
 
 
-# **2. Missing Data:**
+
+# **3. Missing Data:**
 
 N=total no. missing per variable, &nbsp;
 
@@ -487,7 +666,7 @@ missD$pcrtestpositiveresult_date_perc <- as.character(missD$pcrtestpositiveresul
 missD$pcrtestpositiveresult_date <- paste(missD$pcrtestpositiveresult_date, '(', missD$pcrtestpositiveresult_date_perc, '%', ')')
 
 missD %>%
-  filter(lab_name %in% c('AMPATH, Eldoret', 'Coast Provincial General Hospital', 'KEMRI CDC HIV/R, Kisumu', 'KEMRI CIPDCR, Alupe Busia', 'National HIV Reference Laboratory')) %>%
+  filter(lab_name %in% c('AMPATH, Eldoret', 'Coast Provincial General Hospital', 'KEMRI CDC HIV/R, Kisumu', 'KEMRI CIPDCR, Alupe Busia', 'National HIV Reference Laboratory', 'KEMRI CVR HIV-P3, Nairobi')) %>%
   select(lab_name, sid, date_dbscollected, viable_bloodspots, infant_dob, infantprophylaxis, mother_pmtctregimen, pcrtest_requested, pcrtestpositiveresult_date) %>%
   rename('Lab Name'=lab_name, 'SID - N(%)'=sid, 'DBS collection date - N(%)'=date_dbscollected, 'viable blood spots - N(%)'=viable_bloodspots, 'infant DoB - N(%)'=infant_dob, 'infant prophylaxis - N(%)'=infantprophylaxis, 'mother PMTCT regimen - N(%)'=mother_pmtctregimen, 'requested PCR Test - N(%)'= pcrtest_requested, 'PCR test positive result date - N(%)'=pcrtestpositiveresult_date) %>%
   regulartable() %>%
@@ -497,10 +676,10 @@ missD %>%
 &nbsp;
 
 
-# **3. Inconsistent Data:**
+# **4. Inconsistent Data:**
 &nbsp;
 
-  a. ## Wrong SID format
+  a. ## Inconsistent SID format
 
 ```{r wrongSID}
 subset(data, substr(data$sid, 10,12) != grep('[[:digit:]]{3}$', substr(data$sid, 10, 12), value = T) | 
@@ -514,8 +693,9 @@ subset(data, substr(data$sid, 10,12) != grep('[[:digit:]]{3}$', substr(data$sid,
 
 
 ```
+&nbsp;
 
-  b. ## Date sample added to database earlier than Sample DBS collection date
+  b. ## *Date sample added to database* EARLIER than *date DBS sample collected*
 
 ```{r sampleDateEarlier}
 subset(data, date_sampleadded < date_dbscollected, select = c('lab_name', 'sid', 'date_dbscollected', 'date_sampleadded' ))%>%
@@ -524,19 +704,32 @@ subset(data, date_sampleadded < date_dbscollected, select = c('lab_name', 'sid',
   autofit()
 ```
 
-  c. ## Date Sample DBS Collected is earlier than Infant DoB or Infant Age is greater than 18 months
+  c. ## Date Sample DBS Collected is earlier than Infant DoB 
 
 ```{r}
-x <- subset(data, date_dbscollected < infant_dob  | 
-         infantage_days > 547, select = c('lab_name', 'sid', 'infant_dob', 'infantage_days' )) 
+x <- subset(data, date_dbscollected < infant_dob, 
+            select = c('lab_name', 'sid','date_dbscollected', 'infant_dob')) 
 x$infant_dob <-  as.character(format(x$infant_dob, '%d/%m/%Y')) 
-x$infantage_days <- as.character(format(x$infantage_days, digits=1))
+x$date_dbscollected <-  as.character(format(x$date_dbscollected, '%d/%m/%Y')) 
   regulartable(x) %>%
   theme_zebra() %>%
   autofit()
 
 
 ```
+ &nbsp;
+ 
+ d. ## Infant Age is greater than 18 months [547 days] as at dbs collection date
+```{r}
+x <- subset(data, infantage_days > 547, select = c('lab_name', 'sid', 'date_dbscollected', 'infant_dob', 'infantage_days' )) 
+x$infant_dob <-  as.character(format(x$infant_dob, '%d/%m/%Y')) 
+x$date_dbscollected <-  as.character(format(x$date_dbscollected, '%d/%m/%Y')) 
+x$infantage_days <- as.character(format(x$infantage_days, digits=1))
+  regulartable(x) %>%
+  theme_zebra() %>%
+  autofit()
+```
+&nbsp;
 
   e. ## Duplicate SIDs
 
@@ -547,4 +740,10 @@ subset(data, duplicated(data$sid), select = c('lab_name', 'sid'))%>%
   autofit()
 
 ```
+
+```{r cleanup}
+rm(list = ls())
+
+```
+
 
